@@ -20,6 +20,7 @@ This document lists all available Claude Code plugins and their commands in the 
 - [Marketplace Ops](#marketplace-ops-plugin)
 - [Must Gather](#must-gather-plugin)
 - [Node](#node-plugin)
+- [Node Cve](#node-cve-plugin)
 - [Node Tuning](#node-tuning-plugin)
 - [Olm](#olm-plugin)
 - [Olm Team](#olm-team-plugin)
@@ -258,6 +259,15 @@ Kubernetes and OpenShift node health monitoring and diagnostics
 - **`/node:cluster-node-health-check` `[--node <node-name>] [--verbose] [--output-format json|text]`** - Perform comprehensive health check on cluster nodes and report kubelet, CRI-O, and node-level issues
 
 See [plugins/node/README.md](plugins/node/README.md) for detailed documentation.
+
+### Node Cve Plugin
+
+Daily CVE triage for OpenShift Node team components
+
+**Commands:**
+- **`/node-cve:triage` `[--component <name>] [--notify-jira] [--notify-slack] [--days N]`** - Triage all open CVEs for OpenShift Node team components with reachability analysis
+
+See [plugins/node-cve/README.md](plugins/node-cve/README.md) for detailed documentation.
 
 ### Node Tuning Plugin
 
