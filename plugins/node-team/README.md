@@ -36,6 +36,10 @@ Clones a Node team repo and sets up a git worktree for development, optionally t
 
 Tests all authentication tokens (GitHub, Jira) and CLI tools required by Node team workflows in a single pass. Run before `setup` or `node-cve:triage` to catch expired or missing credentials early.
 
+### `node-team:cleanup`
+
+Purges cached artifacts produced by Node team plugins: triage reports, cloned repos, dist-git clones, Vagrant VMs, and roster cache.
+
 ## Skill
 
 ### `node`

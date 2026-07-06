@@ -28,18 +28,21 @@ Designed for both interactive triage sessions and headless execution via `claude
      - `kueue`: components listed under Kueue in the sub-teams table
    - `--sprint <name>`: Filter to bugs in a specific sprint (e.g., "OCP Node Core Sprint 42"). Optional.
    - `--unassigned-only`: Show only untriaged or unassigned bugs. Optional.
-2. **Validate Jira Credentials**
-
-   Use the authentication chain from the [jira reference](../../node-team/skills/node/references/jira.md):
+2. **Validate Tools**
 
    ```bash
-   JIRA_API_TOKEN="${JIRA_API_TOKEN:-$(security find-generic-password -s "JIRA_API_TOKEN" -w 2>/dev/null || secret-tool lookup service redhat key JIRA_API_TOKEN 2>/dev/null)}"
-   JIRA_USER="${JIRA_EMAIL:-$(security find-generic-password -s "JIRA_API_TOKEN" -g 2>&1 | grep acct | sed 's/.*="//;s/"//')}"
-   : "${JIRA_USER:=$(git config user.email)}"
-   [[ "$JIRA_USER" != *@* ]] && JIRA_USER="${JIRA_USER}@redhat.com"
+   which jira 2>/dev/null || echo "MISSING: jira CLI"
    ```
 
-   Exit with error if `JIRA_API_TOKEN` is empty after the chain.
+   If `jira` is missing, display installation instructions ([ankitpokhrel/jira-cli](https://github.com/ankitpokhrel/jira-cli)) and exit.
+
+   Verify credentials:
+
+   ```bash
+   jira me
+   ```
+
+   Exit with error if `jira me` fails (not configured, expired token, or network issue).
 
 3. **Create work directory**: `mkdir -p .work/node-bug/triage-$(date +%Y-%m-%d)`
 
@@ -49,7 +52,7 @@ Designed for both interactive triage sessions and headless execution via `claude
 
 1. **Use the Jira saved filter** "Node Bugs" (ID 83963) for the base query. The filter defines which components are in scope.
 
-2. **Build JQL**:
+2. **Build base JQL**:
 
    ```text
    filter = "Node Bugs" AND status not in (Closed, Done, Verified)
@@ -62,35 +65,14 @@ Designed for both interactive triage sessions and headless execution via `claude
    - If `--sprint <name>`: append `AND sprint = "<name>"`
    - If `--unassigned-only`: append `AND (assignee is EMPTY OR assignee in ("aos-node@redhat.com") OR priority = Undefined OR "Release Blocker" = Proposed)`
 
-3. **Execute the query** using the POST search endpoint:
+3. **Execute the query** using the `jira` CLI:
 
    ```bash
-   curl -s -u "$JIRA_USER:$JIRA_API_TOKEN" \
-     -H "Content-Type: application/json" \
-     -X POST "https://redhat.atlassian.net/rest/api/3/search/jql" \
-     -d '{
-       "jql": "<constructed JQL>",
-       "maxResults": 100,
-       "fields": [
-         "key", "summary", "status", "priority", "assignee",
-         "components", "labels",
-         "customfield_10689",
-         "customfield_10840",
-         "customfield_10847",
-         "customfield_10978",
-         "customfield_10020"
-       ]
-     }'
+   jira issue list -q "<constructed JQL>" \
+     --plain --no-headers --columns KEY,SUMMARY,COMPONENT,STATUS,ASSIGNEE,LABELS,PRIORITY
    ```
 
-   Custom field mapping:
-   - `customfield_10689`: Customer Impact
-   - `customfield_10840`: Severity
-   - `customfield_10847`: Release Blocker
-   - `customfield_10978`: SFDC Cases Counter
-   - `customfield_10020`: Sprint
-
-   Handle pagination via `nextPageToken`: while the response has `isLast: false`, repeat the request with `"nextPageToken": "<token from previous response>"` in the body. This endpoint does not return `total` and does not accept `startAt`.
+   Handle pagination: the `jira` CLI returns up to 100 results by default. If the result count equals 100, paginate by re-running with `--paginate 100:100`, `--paginate 200:100`, etc. until fewer than 100 results are returned.
 
 4. **Print intermediate summary**: "Found N open bugs for Node team components."
 
@@ -107,26 +89,40 @@ Designed for both interactive triage sessions and headless execution via `claude
    - Kueue: bugs whose component appears in the Kueue row of the sub-teams table
    - Core: all remaining Node components
 
-2. **Classify each bug into triage buckets** using the [Bug Triage Definitions](../../node-team/skills/node/references/jira.md):
+2. **Classify each bug into triage buckets** using JQL classification queries. Run each query with the same base JQL from Phase 1 (including any `--sub-team`, `--sprint`, or `--unassigned-only` filters) plus a bucket-specific condition. Use the [Bug Triage Definitions](../../node-team/skills/node/references/jira.md) as the source of truth.
 
-   - **Release Blockers**: `"Release Blocker"` field value is "Approved"
-   - **Potential Blockers**: priority is "Blocker" AND `"Release Blocker"` is empty (Blocker priority set but no release blocker decision yet)
-   - **Customer Escalations**: `customfield_10978` (SFDC Cases Counter) is not null/empty, OR `customfield_10689` (Customer Impact) value is "Customer Escalated"
-   - **Component Regressions**: labels contain `component-regression`
-   - **Untriaged**: priority is "Undefined", OR `"Release Blocker"` is "Proposed", OR assignee is `aos-node@redhat.com`
-   - **Other**: all remaining bugs
+   For each bucket, run:
+   ```bash
+   jira issue list -q "<base JQL> AND <bucket condition>" \
+     --plain --no-headers --columns KEY
+   ```
+
+   Bucket conditions:
+   - **Release Blockers**: `AND "Release Blocker" = Approved`
+   - **Potential Blockers**: `AND priority = Blocker AND "Release Blocker" is EMPTY`
+   - **Customer Escalations**: `AND ("SFDC Cases Counter" is not EMPTY OR "Customer Impact" = "Customer Escalated")`
+   - **Component Regressions**: `AND labels = component-regression`
+   - **Untriaged**: `AND (priority = Undefined OR "Release Blocker" = Proposed OR assignee in ("aos-node@redhat.com"))`
+   - **Other**: bugs from the main query that do not appear in any of the above buckets
 
    A bug can appear in multiple buckets (e.g., a release blocker that is also a customer escalation). Count it in each applicable bucket.
+
+   For Customer Escalation bugs, fetch the SFDC Cases Counter for display:
+   ```bash
+   jira issue view OCPBUGS-XXXXX --raw
+   ```
+   Parse `customfield_10978` from the JSON output to show "N support cases" in the report.
 
 3. **Assignment suggestions** (when team roster files exist):
 
    Load team rosters from `~/.node-assistant/team-roster-{core,dra,kueue}.json`. If roster files do not exist, skip assignment suggestions and print "Roster files not found, skipping assignment suggestions."
 
-   Query all team members' open bug counts in a single call:
-   ```text
-   filter = "Node Bugs" AND status not in (Closed, Done, Verified) AND assignee in (<all roster members>)
+   Query all team members' open bug counts:
+   ```bash
+   jira issue list -q "filter = \"Node Bugs\" AND status not in (Closed, Done, Verified) AND assignee in (<all roster members>)" \
+     --plain --no-headers --columns KEY,ASSIGNEE
    ```
-   Group results by assignee in code to build a workload map.
+   Handle pagination the same way as Phase 1. Group results by assignee in code to build a workload map.
 
    For each unassigned or mailing-list-assigned bug:
    - Determine the correct sub-team from step 1

@@ -72,8 +72,8 @@ jira me
 ```
 
 - Pass: returns current user info
-- Fail: not installed or not configured (this is optional since the
-  `node-team` plugin uses `curl` directly, but `node-cve` requires it)
+- Fail: not installed or not configured (required by `node-cve` and
+  `node-bug`)
 
 ### Summary
 
@@ -86,7 +86,7 @@ GitHub CLI            PASS
 GitHub API            PASS
 Jira API token        PASS
 Jira API connectivity PASS
-Jira CLI              PASS (optional)
+Jira CLI              PASS
 ```
 
 If any required check fails and `--fix` is specified, print the remediation

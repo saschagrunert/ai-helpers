@@ -102,3 +102,4 @@ For setup instructions (hostnames, authentication), see
 | `node-bug` | `/node-bug:triage` | Bug triage, sub-team routing, assignment suggestions |
 | `node-rpm` | `/node-rpm:bump` | Bump downstream RPM packages |
 | `node-onboarding` | `/node-onboarding:checklist` | New team member onboarding |
+| `node-onboarding` | `/node-onboarding:resources` | Quick-reference bookmarks and links |

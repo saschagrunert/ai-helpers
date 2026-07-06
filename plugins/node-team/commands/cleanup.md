@@ -33,16 +33,19 @@ Scan for these locations relative to the current working directory and home:
 | Location | Contents |
 |----------|----------|
 | `.work/node-cve/repos/` | Shallow repo clones |
-| `.work/node-cve/triage-YYYY-MM-DD/` | Triage reports and analysis |
+| `.work/node-cve/triage-YYYY-MM-DD/` | CVE triage reports and analysis |
+| `.work/node-bug/triage-YYYY-MM-DD/` | Bug triage reports |
+| `.work/node-rpm/` | Dist-git clones and Vagrant VM |
 | `~/.node-assistant/` | Cached team roster JSON files |
 
 For each location that exists, compute the size with `du -sh`.
 
 ### 2. Filter by age
 
-For `.work/node-cve/triage-*/` directories, parse the date from the directory
-name and skip directories newer than `--older-than` days. The `repos/` and
-`~/.node-assistant/` directories are always included (no age filter).
+For `.work/node-cve/triage-*/` and `.work/node-bug/triage-*/` directories,
+parse the date from the directory name and skip directories newer than
+`--older-than` days. The `repos/`, `.work/node-rpm/`, and `~/.node-assistant/`
+directories are always included (no age filter).
 
 ### 3. Show summary
 
@@ -54,9 +57,11 @@ Location                                          Size    Age
 $PWD/.work/node-cve/repos/                        1.2G    -
 $PWD/.work/node-cve/triage-2026-05-01/            45M     59 days
 $PWD/.work/node-cve/triage-2026-06-15/            52M     14 days (skipped, < 30 days)
+$PWD/.work/node-bug/triage-2026-05-01/            12M     59 days
+$PWD/.work/node-rpm/                              380M    -
 $HOME/.node-assistant/                            128K    -
 
-Total to remove: 1.25G
+Total to remove: 1.64G
 ```
 
 ### 4. Delete
@@ -69,12 +74,15 @@ then delete with `rm -rf`. Report each deletion:
 ```text
 Removed $PWD/.work/node-cve/repos/ (1.2G)
 Removed $PWD/.work/node-cve/triage-2026-05-01/ (45M)
+Removed $PWD/.work/node-bug/triage-2026-05-01/ (12M)
+Removed $PWD/.work/node-rpm/ (380M)
 Removed $HOME/.node-assistant/ (128K)
-Done. Freed 1.25G.
+Done. Freed 1.64G.
 ```
 
 ## Notes
 
 - This command never deletes source code repositories or plugin files
-- Re-running `/node-cve:triage` recreates `.work/` artifacts automatically
+- Re-running `/node-cve:triage` or `/node-bug:triage` recreates `.work/` artifacts automatically
+- Re-running `/node-rpm:bump` recreates dist-git clones; the Vagrant VM must be reprovisioned with `vagrant up`
 - Roster cache is re-synced on the next `/node-team:overview` run

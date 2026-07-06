@@ -14,7 +14,7 @@ Requires the `node-team` plugin (installed automatically as a dependency).
 
 ## Command
 
-### `/node-bug:triage [--sub-team core|devices|kueue] [--sprint <name>] [--unassigned-only] [--notify-slack]`
+### `/node-bug:triage [--sub-team core|devices|kueue] [--sprint <name>] [--unassigned-only]`
 
 Query open Node bugs, classify by severity and sub-team, suggest assignments, and generate a triage summary.
 
@@ -29,9 +29,6 @@ Query open Node bugs, classify by severity and sub-team, suggest assignments, an
 
 # Show only unassigned bugs for DRA/Devices
 /node-bug:triage --sub-team devices --unassigned-only
-
-# Triage and notify Slack
-/node-bug:triage --notify-slack
 ```
 
 **Arguments:**
@@ -39,11 +36,9 @@ Query open Node bugs, classify by severity and sub-team, suggest assignments, an
 - `--sub-team core|devices|kueue`: Filter to one sub-team's components (Core, DRA/Devices, or Kueue)
 - `--sprint <name>`: Filter to bugs in a specific sprint
 - `--unassigned-only`: Show only untriaged or unassigned bugs
-- `--notify-slack`: Send summary to Slack (requires `SLACK_API_TOKEN` + `SLACK_CHANNEL` or `SLACK_WEBHOOK`)
 
 ## Prerequisites
 
-- `JIRA_API_TOKEN` environment variable (or macOS Keychain / Linux secret-tool)
-- `curl` (for Jira REST API and Slack)
-- Optional: `SLACK_API_TOKEN` + `SLACK_CHANNEL` or `SLACK_WEBHOOK` (for `--notify-slack`)
+- `jira` CLI ([ankitpokhrel/jira-cli](https://github.com/ankitpokhrel/jira-cli)) configured with Jira credentials
+- `JIRA_API_TOKEN` environment variable
 - Optional: `~/.node-assistant/team-roster-{core,dra}.json` (for assignment suggestions)
